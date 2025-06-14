@@ -111,11 +111,11 @@ func ChangePact(c *gin.Context) {
 	// 根据 pactRequest.Pact 的值更新全局协议
 	switch pactRequest.Pact {
 	case "udp":
-		config.GOLOBAL_PACT = "udp"
+		config.GlobalPact = "udp"
 		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 UDP"})
 		log.Info("协议已更改为 UDP")
 	case "tcp":
-		config.GOLOBAL_PACT = "tcp"
+		config.GlobalPact = "tcp"
 		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 TCP"})
 		log.Info("协议已更改为 TCP")
 	default:

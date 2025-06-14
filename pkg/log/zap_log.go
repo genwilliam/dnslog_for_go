@@ -52,8 +52,11 @@ func InitZapLogger() {
 	})
 }
 
-/*封装几个类型的日志信息，方便调用*/
-
+// Info info 记录信息级别的日志
+// Debug debug 记录调试级别的日志
+// Warn warn 记录警告级别的日志
+// Error error 记录错误级别的日志
+// Fatal fatal 记录致命错误级别的日志
 func Info(msg string, fields ...zap.Field) {
 	if Zap != nil {
 		Zap.Info(msg, fields...)

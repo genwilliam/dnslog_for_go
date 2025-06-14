@@ -27,7 +27,7 @@ type DNSResult struct {
 // ResolveDNS dns查询
 func ResolveDNS(domainName string) DNSQueryResult {
 	c := &dns.Client{
-		Net:     config.GOLOBAL_PACT,
+		Net:     config.GlobalPact,
 		Timeout: 10 * time.Second,
 	}
 
