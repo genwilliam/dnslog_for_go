@@ -2,6 +2,7 @@ package utils
 
 import (
 	"dnslog_for_go/pkg/log"
+
 	"gopkg.in/ini.v1"
 )
 

@@ -2,6 +2,7 @@ package router
 
 import (
 	"dnslog_for_go/internal/domain"
+
 	"github.com/gin-gonic/gin"
 )
 

@@ -3,8 +3,9 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"github.com/miekg/dns"
 	"testing"
+
+	"github.com/miekg/dns"
 )
 
 type result struct {

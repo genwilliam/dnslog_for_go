@@ -1,12 +1,13 @@
 package log
 
 import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (

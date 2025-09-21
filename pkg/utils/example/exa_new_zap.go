@@ -1,9 +1,10 @@
 package example
 
 import (
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 )
 
 var Zap *zap.Logger // 声明全局变量，封装info等方法

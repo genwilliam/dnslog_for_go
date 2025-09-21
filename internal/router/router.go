@@ -5,8 +5,6 @@ import (
 	"dnslog_for_go/internal/domain/dns_server"
 	"dnslog_for_go/pkg/log"
 	"embed"
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -14,6 +12,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func StartServer(embedFS embed.FS) {

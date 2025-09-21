@@ -2,11 +2,12 @@ package domain
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"math/rand"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var commonTLDs = []string{

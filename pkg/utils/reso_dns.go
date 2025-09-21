@@ -5,11 +5,12 @@ import (
 	"dnslog_for_go/internal/domain/dns_server"
 	"dnslog_for_go/pkg/log"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
 	"gopkg.in/ini.v1"
-	"strconv"
-	"time"
 )
 
 // DNSQueryResult DNS 查询结果结构体

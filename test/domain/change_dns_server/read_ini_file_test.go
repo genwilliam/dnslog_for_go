@@ -2,9 +2,10 @@ package change_dns_server
 
 import (
 	"fmt"
-	"gopkg.in/ini.v1"
 	"os"
 	"testing"
+
+	"gopkg.in/ini.v1"
 )
 
 func TestReadIniFile(t *testing.T) {

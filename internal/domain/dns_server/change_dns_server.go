@@ -2,10 +2,11 @@ package dns_server
 
 import (
 	"dnslog_for_go/pkg/log"
-	"go.uber.org/zap"
-	"gopkg.in/ini.v1"
 	"os"
 	"strconv"
+
+	"go.uber.org/zap"
+	"gopkg.in/ini.v1"
 )
 
 // ChangeServer 修改 DNS 服务器

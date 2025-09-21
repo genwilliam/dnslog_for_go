@@ -3,9 +3,10 @@ package domain
 import (
 	"dnslog_for_go/pkg/log"
 	"fmt"
-	"github.com/google/uuid"
 	"math/rand"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // GeneratingDomain 基于uuid生成域名

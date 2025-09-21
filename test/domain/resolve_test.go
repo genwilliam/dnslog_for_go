@@ -1,9 +1,10 @@
 package domain
 
 import (
-	"github.com/miekg/dns"
 	"testing"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 func Test_demo(t *testing.T) {

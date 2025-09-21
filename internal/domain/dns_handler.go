@@ -5,9 +5,10 @@ import (
 	"dnslog_for_go/internal/domain/dns_server"
 	"dnslog_for_go/pkg/log"
 	"dnslog_for_go/pkg/utils"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 // ChangeDNSRequest 修改DNS请求体
