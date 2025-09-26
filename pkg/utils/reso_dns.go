@@ -113,5 +113,5 @@ func getServer() string {
 		log.Error("配置值不是有效数字")
 		panic("配置值不是有效数字")
 	}
-	return dns_server.DnsServer(currentNum)
+	return dns_server.GetDNSServer(currentNum)
 }

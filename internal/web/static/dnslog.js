@@ -1,10 +1,13 @@
+// 全局变量用于存储轮询的定时器ID
 let pollingInterval = null;
 
+// todo: 有没有一种可能，不用js，直接用go实现动态刷新？
 function init() {
     bindFormSubmit();
     setupGenerateDomainButton();
     ChangeDNSServer();
     ChangePact();
+    stopPolling();
 }
 
 /**
@@ -174,6 +177,45 @@ function ChangePact() {
             }
         })
         .catch(err => console.error("请求失败:", err));
+    });
+}
+
+/**
+ * 暂停轮询
+ * @returns {void}
+ * **/
+
+function stopPolling() {
+    const statusBtn = document.getElementById("pause");
+    if (!statusBtn) {
+        throw new Error('Pause button not found');
+    }
+
+    statusBtn.addEventListener("click", async function () {
+        try {
+            let action = statusBtn.innerText.toLowerCase(); // "start" or "pause"
+            let url = `http://localhost:8080/${action}`;
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: action })
+            });
+
+            if (!response.ok) {
+                throw new Error("Server error: " + response.status);
+            }
+
+            const msg = await response.text();
+            alert(msg); // 弹窗显示服务器返回的信息
+
+            // 切换按钮文字
+            statusBtn.innerText = action === "pause" ? "start" : "pause";
+
+        } catch (err) {
+            console.error("请求失败:", err);
+            alert("请求失败，请检查后端服务");
+        }
     });
 }
 
