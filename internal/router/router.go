@@ -23,6 +23,23 @@ import (
 func StartServer(embedFS embed.FS) {
 	r := gin.Default()
 
+	// 添加跨域中间件
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// 处理浏览器的预检请求（OPTIONS）
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	})
+
 	// 加载嵌入静态文件
 	if err := loadStatic(r, embedFS); err != nil {
 		log.Error("Failed to load static files", zap.Error(err))
