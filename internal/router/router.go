@@ -118,7 +118,7 @@ func loadTemplates(r *gin.Engine, embedFS embed.FS) error {
 func registerRoutes(r *gin.Engine) {
 	r.GET("/dnslog", domain.ShowForm)
 	r.POST("/submit", domain.SubmitDomain)
-	r.POST("/random-domain", domain.RandomDomain)
+	r.GET("/random-domain", domain.RandomDomain)
 	r.POST("/change", domain.ChangeServer)
 	r.POST("/change-pact", domain.ChangePact)
 	r.POST("/pause", domain.InitPause)

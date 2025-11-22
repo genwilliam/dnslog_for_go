@@ -3,6 +3,7 @@ package domain
 import (
 	"dnslog_for_go/internal/config"
 	"dnslog_for_go/internal/domain/dns_server"
+	"dnslog_for_go/internal/response"
 	"dnslog_for_go/pkg/log"
 	"dnslog_for_go/pkg/utils"
 	"net/http"
@@ -35,44 +36,47 @@ func ShowForm(c *gin.Context) {
 // SubmitDomain 提交域名并查询
 func SubmitDomain(c *gin.Context) {
 	if IsPaused() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "系统已暂停，无法查询域名"})
-		log.Warn("系统已暂停，无法查询域名")
+		response.Error(c, 503, "系统已暂停，无法查询域名")
 		return
 	}
 
-	var domain struct {
+	var req struct {
 		DomainName string `json:"domain_name"`
 	}
 
-	if err := c.ShouldBindJSON(&domain); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 400, "参数格式错误: "+err.Error())
 		return
 	}
 
-	if !utils.StandardizeDomain(domain.DomainName) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "域名不合法，请重新输入"})
+	if !utils.StandardizeDomain(req.DomainName) {
+		response.Error(c, 400, "域名不合法，请重新输入")
 		return
 	}
 
-	dnsResult := utils.ResolveDNS(domain.DomainName)
+	dnsResult := utils.ResolveDNS(req.DomainName)
+
 	if len(dnsResult.Results) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "没有找到相关的 DNS 记录"})
-		log.Error("没有找到相关的 DNS 记录", zap.String("domain", domain.DomainName))
-	} else {
-		c.JSON(http.StatusOK, dnsResult)
+		response.Error(c, 404, "没有找到相关 DNS 记录")
+		return
 	}
+
+	// 返回标准格式
+	response.Success(c, dnsResult)
 }
 
 // RandomDomain 随机生成域名
 func RandomDomain(c *gin.Context) {
 	if IsPaused() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "系统已暂停，无法生成域名"})
-		log.Warn("系统已暂停，无法生成域名")
+		response.Error(c, 503, "系统已暂停，无法生成域名")
 		return
 	}
 
 	domainName := GeneratingDomain()
-	c.JSON(http.StatusOK, gin.H{"domain": domainName})
+
+	response.Success(c, gin.H{
+		"domain": domainName,
+	})
 }
 
 // ChangeServer 修改DNS服务器

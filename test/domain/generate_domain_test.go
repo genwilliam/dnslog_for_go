@@ -48,7 +48,7 @@ func TestGeneratingDomain(t *testing.T) {
 }
 func route(domain string) {
 	r := gin.Default()
-	r.POST("/random-domain", func(c *gin.Context) {
+	r.GET("/random-domain", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"domain": domain,
 		})
