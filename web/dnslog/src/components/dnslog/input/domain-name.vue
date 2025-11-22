@@ -5,5 +5,5 @@
 </template>
 
 <script setup lang="ts">
-import { domain } from './use-domain';
+import { domain } from './use-domain.ts';
 </script>

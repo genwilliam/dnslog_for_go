@@ -5,7 +5,7 @@
         <n-notification-provider>
           <n-modal-provider>
             <n-dialog-provider>
-              <Demo />
+              <domainName />
             </n-dialog-provider>
           </n-modal-provider>
         </n-notification-provider>
@@ -15,5 +15,5 @@
 </template>
 
 <script setup lang="ts">
-import Demo from '@/components/dnslog/input/domain-name.vue'
+import domainName from '@/components/dnslog/input/domain-name.vue';
 </script>
