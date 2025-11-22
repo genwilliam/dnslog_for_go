@@ -15,9 +15,9 @@ export default defineConfig({
     open: true,
     proxy: {
       '/dnslog': {
-        target: 'http://localhost:8080/', // 后端地址
+        target: 'http://localhost:8080',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''), // 去掉前缀
+        rewrite: (path) => path.replace(/^\/dnslog/, ''),
       },
     },
   },

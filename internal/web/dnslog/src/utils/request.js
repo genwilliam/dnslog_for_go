@@ -1,5 +1,5 @@
 import axios from 'axios';
-import baseURL from './index';
+import { baseURL } from './index';
 axios.defaults.headers['Content-Type'] = 'application/json;charset=utf-8';
 // 创建axios实例
 const request = axios.create({

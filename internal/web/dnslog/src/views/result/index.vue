@@ -22,8 +22,6 @@
 </template>
 
 <script lang="ts" setup>
-import { results, error } from './index.ts';
+import { results, error } from './index';
 import { domain } from '@/components/dnslog/input/use-domain';
 </script>
-
-<style scoped></style>

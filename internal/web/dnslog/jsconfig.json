@@ -4,5 +4,5 @@
     "strict": false, // 开启严格模式
     "target": "es6"
   },
-  "include": ["./**/*.js"]
+  "include": ["./**/*.js", "src/api/generate/index.ts"]
 }

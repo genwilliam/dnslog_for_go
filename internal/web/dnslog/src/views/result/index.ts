@@ -1,5 +1,6 @@
 import { ref } from 'vue';
-import { submitDomain } from '@/components/dnslog/input/use-domain.ts';
+import { submitDns } from '@/api/submit';
+import { domain, submitDomain } from '@/components/dnslog/input/use-domain';
 
 export interface DnsResult {
   ip: string;
@@ -9,28 +10,23 @@ export interface DnsResult {
 export const results = ref<DnsResult[]>([]);
 export const error = ref<string>('');
 
-export default async function fetchDns() {
+export async function fetchDns() {
   try {
-    const currentDomain = submitDomain();
-    console.log('提交的域名:', currentDomain);
+    const d = submitDomain();
 
-    const response = await fetch('http://localhost:8080/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain_name: currentDomain }),
-    });
+    const res = await submitDns(d);
 
-    const data = await response.json();
-
-    if (data.error) {
-      error.value = data.error;
+    if (res.code !== 200) {
+      error.value = res.message;
       results.value = [];
-    } else {
-      error.value = '';
-      results.value = data.results || [];
+      return;
     }
-  } catch (err: any) {
-    console.error('请求失败:', err);
+
+    domain.value = res.data.domain;
+    results.value = res.data.results;
+
+    error.value = '';
+  } catch (e) {
     error.value = '请求失败，请检查服务器是否启动';
   }
 }
