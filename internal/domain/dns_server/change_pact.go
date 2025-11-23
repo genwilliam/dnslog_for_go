@@ -7,7 +7,7 @@ import (
 )
 
 func SelectPact(s string) string {
-	cfg, err := ini.Load("internal/config/dns_server.ini")
+	cfg, err := ini.Load("config/dns_server.ini")
 	if err != nil {
 		log.Error("无法读取配置文件")
 		panic("Unable to read configuration file")
