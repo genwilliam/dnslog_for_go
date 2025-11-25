@@ -5,7 +5,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import BaseButton from '@/components/base/BaseButton.vue';
-import { clearResults } from '@/views/result/index.ts';
+import { clearResults } from '@/views/dns-query/index.ts';
 </script>
 
 <style scoped></style>

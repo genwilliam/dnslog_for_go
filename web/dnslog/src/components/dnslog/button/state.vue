@@ -7,7 +7,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import fetchDns from '@/views/result/index.ts';
+import fetchDns from '@/views/dns-query/index.ts';
 import { startPolling, stopPolling } from '@/utils/pulling.ts';
 import BaseButton from '@/components/base/BaseButton.vue';
 // 轮询状态控制

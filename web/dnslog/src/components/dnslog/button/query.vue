@@ -1,7 +1,4 @@
 <template>
-	<!-- <n-space vertical>
-    <n-button type="success" size="large" @click="startPolling"> Record DNS query </n-button>
-  </n-space> -->
 	<BaseButton type="success" size="large" text="query" @click="startPolling" />
 </template>
 
