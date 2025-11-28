@@ -1,4 +1,4 @@
-import { fetchDns } from '@/views/result/index';
+import { fetchDns } from '@/views/dns-query/index';
 
 let pollingTimer: number | null = null;
 export function startPolling() {

@@ -1,7 +1,6 @@
 <template>
 	<BaseButton type="info" text="Generate" @click="handleGenerate" />
 </template>
-
 <script setup lang="ts">
 import BaseButton from '@/components/base/BaseButton.vue';
 import { generateRandomDomain } from '@/api/generate';
