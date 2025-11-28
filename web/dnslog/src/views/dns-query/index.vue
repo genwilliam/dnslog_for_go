@@ -1,24 +1,26 @@
 <template>
-	<n-config-provider>
-		<n-space vertical>
-			<!-- 错误信息 -->
-			<div v-if="error" style="color: red; margin: 10px 0">错误：{{ error }}</div>
+	<div class="page-wrapper">
+		<n-config-provider>
+			<n-space vertical>
+				<!-- 错误信息 -->
+				<div v-if="error" style="color: red; margin: 10px 0">错误：{{ error }}</div>
 
-			<!-- 有记录时显示表格 -->
-			<n-data-table
-				v-if="records.length > 0"
-				:columns="columns"
-				:data="records"
-				:max-height="520"
-				bordered
-			/>
+				<!-- 有记录时显示表格 -->
+				<n-data-table
+					v-if="records.length > 0"
+					:columns="columns"
+					:data="records"
+					:max-height="520"
+					bordered
+				/>
 
-			<!-- 无结果 -->
-			<div v-else>
-				<p>暂无 DNS 查询记录。</p>
-			</div>
-		</n-space>
-	</n-config-provider>
+				<!-- 无结果 -->
+				<div v-else>
+					<p>暂无 DNS 查询记录。</p>
+				</div>
+			</n-space>
+		</n-config-provider>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -99,3 +101,11 @@ const columns: DataTableColumns = [
 	},
 ];
 </script>
+<style scoped>
+.page-wrapper {
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	box-sizing: border-box;
+}
+</style>
