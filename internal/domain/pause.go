@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"dnslog_for_go/pkg/log"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

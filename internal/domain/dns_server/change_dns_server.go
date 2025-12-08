@@ -1,9 +1,10 @@
 package dns_server
 
 import (
-	"dnslog_for_go/pkg/log"
 	"os"
 	"strconv"
+
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"go.uber.org/zap"
 	"gopkg.in/ini.v1"
@@ -21,7 +22,7 @@ func ChangeServer(num byte) {
 	dir, _ := os.Getwd()
 	log.Info("当前工作目录:" + dir)
 
-	cfg, err := ini.Load("internal/config/dns_server.ini")
+	cfg, err := ini.Load("config/dns_server.ini")
 	if err != nil {
 		log.Error("无法读取配置文件")
 		panic("Unable to read configuration file")
@@ -48,7 +49,7 @@ func ChangeServer(num byte) {
 
 	// 更新配置文件
 	cfg.Section("DNS").Key("server").SetValue(strconv.Itoa(int(num)))
-	err = cfg.SaveTo("internal/config/dns_server.ini")
+	err = cfg.SaveTo("config/dns_server.ini")
 	if err != nil {
 		log.Error("保存配置失败")
 		panic("Failed to save configuration")
@@ -59,11 +60,11 @@ func ChangeServer(num byte) {
 
 // setDNS 设置 DNS 服务器
 func setDNS(value string) error {
-	cfg, err := ini.Load("internal/config/dns_server.ini")
+	cfg, err := ini.Load("config/dns_server.ini")
 	if err != nil {
 		return err
 	}
 
 	cfg.Section("DNS").Key("server").SetValue(value)
-	return cfg.SaveTo("internal/config/dns_server.ini")
+	return cfg.SaveTo("config/dns_server.ini")
 }

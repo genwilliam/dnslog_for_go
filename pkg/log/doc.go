@@ -1,0 +1,2 @@
+// Package log
+package log

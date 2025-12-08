@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"dnslog_for_go/internal/config"
-	"dnslog_for_go/internal/domain/dns_server"
-	"dnslog_for_go/pkg/log"
 	"fmt"
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"strconv"
 	"time"
 
@@ -97,7 +97,7 @@ func appendResults(results []DNSResult, domainName string, queryType uint16, c *
 
 // getServer 从配置文件读取 DNS 服务器地址
 func getServer() string {
-	cfg, err := ini.Load("internal/config/dns_server.ini")
+	cfg, err := ini.Load("config/dns_server.ini")
 	if err != nil {
 		log.Error("无法读取配置文件")
 		panic("无法读取配置文件")

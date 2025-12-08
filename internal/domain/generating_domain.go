@@ -1,10 +1,11 @@
 package domain
 
 import (
-	"dnslog_for_go/pkg/log"
 	"fmt"
 	"math/rand"
 	"strings"
+
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/google/uuid"
 )

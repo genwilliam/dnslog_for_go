@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"regexp"
 	"strings"
+
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 )
 
 // 允许的常见 TLD 后缀（可扩展）

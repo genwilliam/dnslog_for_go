@@ -1,4 +1,4 @@
-package change_dns_server
+package dns_server_test
 
 import (
 	"fmt"

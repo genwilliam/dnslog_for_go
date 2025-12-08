@@ -1,7 +1,7 @@
-package router
+package router_test
 
 import (
-	"dnslog_for_go/internal/domain"
+	"github.com/genwilliam/dnslog_for_go/internal/domain"
 
 	"github.com/gin-gonic/gin"
 )

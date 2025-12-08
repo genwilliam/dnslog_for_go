@@ -14,7 +14,7 @@ func LoadDNSConfig() []byte {
 		log.Fatalf("Failed to get working directory: %v", err)
 	}
 
-	configPath := filepath.Join(baseDir, "internal", "config", "dns_server.ini")
+	configPath := filepath.Join(baseDir, "config", "dns_server.ini")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Fatalf("Failed to read config file %s: %v", configPath, err)

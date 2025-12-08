@@ -1,7 +1,7 @@
-package utils
+package dns_server
 
 import (
-	"dnslog_for_go/pkg/log"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"gopkg.in/ini.v1"
 )

@@ -1,9 +1,10 @@
 package dns_server
 
 import (
-	"dnslog_for_go/internal/config"
 	"log"
 	"strconv"
+
+	"github.com/genwilliam/dnslog_for_go/config"
 
 	"gopkg.in/ini.v1"
 )
@@ -18,7 +19,7 @@ func GetDNSServer(num int) string {
 	}
 
 	// 尝试读取配置文件
-	data := config.LoadDNSConfig() // 通过相对路径读取 internal/config/dns_server.ini
+	data := config.LoadDNSConfig() // 通过相对路径读取 config/dns_server.ini
 	cfg, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, data)
 	if err != nil {
 		log.Println("无法读取配置文件，使用默认 DNS:", err)

@@ -1,12 +1,13 @@
 package domain
 
 import (
-	"dnslog_for_go/internal/config"
-	"dnslog_for_go/internal/domain/dns_server"
-	"dnslog_for_go/internal/response"
-	"dnslog_for_go/pkg/log"
-	"dnslog_for_go/pkg/utils"
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
+	"github.com/genwilliam/dnslog_for_go/pkg/response"
+	"github.com/genwilliam/dnslog_for_go/pkg/utils"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -35,34 +36,83 @@ func ShowForm(c *gin.Context) {
 
 // SubmitDomain 提交域名并查询
 func SubmitDomain(c *gin.Context) {
+
+	traceID := utils.GenerateTraceID()
+	clientIP := c.ClientIP()
+
 	if IsPaused() {
-		response.Error(c, 503, "系统已暂停，无法查询域名")
+		log.Warn("系统暂停，拒绝查询",
+			zap.String("trace_id", traceID),
+			zap.String("client_ip", clientIP),
+		)
+		response.ErrorWithTrace(c, 503, "系统已暂停，无法查询域名", traceID)
 		return
 	}
 
 	var req struct {
-		DomainName string `json:"domain_name"`
+		DomainName string `json:"domain_name" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 400, "参数格式错误: "+err.Error())
+		log.Warn("参数格式错误",
+			zap.String("trace_id", traceID),
+			zap.String("client_ip", clientIP),
+			zap.Error(err),
+		)
+		response.ErrorWithTrace(c, 400, "参数格式错误: "+err.Error(), traceID)
+		return
+	}
+
+	if req.DomainName == "" {
+		response.ErrorWithTrace(c, 400, "域名不能为空", traceID)
 		return
 	}
 
 	if !utils.StandardizeDomain(req.DomainName) {
-		response.Error(c, 400, "域名不合法，请重新输入")
+		log.Info("域名格式不合法",
+			zap.String("trace_id", traceID),
+			zap.String("client_ip", clientIP),
+			zap.String("domain", req.DomainName),
+		)
+		response.ErrorWithTrace(c, 400, "域名不合法，请重新输入", traceID)
 		return
 	}
 
+	// 执行 DNS 查询
+	dnsStart := time.Now()
 	dnsResult := utils.ResolveDNS(req.DomainName)
+	dnsCost := time.Since(dnsStart).Milliseconds()
 
 	if len(dnsResult.Results) == 0 {
-		response.Error(c, 404, "没有找到相关 DNS 记录")
+		log.Warn("DNS 查询无结果",
+			zap.String("trace_id", traceID),
+			zap.String("client_ip", clientIP),
+			zap.String("domain", req.DomainName),
+		)
+		response.ErrorWithTrace(c, 404, "没有找到相关 DNS 记录", traceID)
 		return
 	}
 
-	// 返回标准格式
-	response.Success(c, dnsResult)
+	// 构造响应
+	resp := gin.H{
+		"domain":     req.DomainName,
+		"results":    dnsResult.Results,
+		"count":      len(dnsResult.Results),
+		"client_ip":  clientIP,
+		"timestamp":  time.Now().UnixMilli(),
+		"trace_id":   traceID,
+		"query_cost": dnsCost,
+	}
+
+	log.Info("DNS 查询成功",
+		zap.String("trace_id", traceID),
+		zap.String("client_ip", clientIP),
+		zap.String("domain", req.DomainName),
+		zap.Int("result_count", len(dnsResult.Results)),
+		zap.Int64("query_cost_ms", dnsCost),
+	)
+
+	response.Success(c, resp)
 }
 
 // RandomDomain 随机生成域名
