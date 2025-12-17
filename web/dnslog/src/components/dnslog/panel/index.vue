@@ -8,7 +8,7 @@
 							<div class="btn-group">
 								<generateBtn />
 								<stateBtn />
-								<dataPersisBtn />
+								<!-- <dataPersisBtn /> -->
 								<clearBtn />
 							</div>
 						</n-dialog-provider>

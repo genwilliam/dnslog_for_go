@@ -1,5 +1,5 @@
 import http from '@/utils/request';
 
-export function dnsRecords(domain) {
-	return http.get('/api/records');
+export function dnsRecords(params = {}) {
+	return http.get('/api/records', params);
 }

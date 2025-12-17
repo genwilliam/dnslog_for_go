@@ -2,15 +2,14 @@ package utils
 
 import (
 	"fmt"
-	"github.com/genwilliam/dnslog_for_go/config"
-	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
-	"github.com/genwilliam/dnslog_for_go/pkg/log"
-	"strconv"
+	"strings"
 	"time"
+
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
-	"gopkg.in/ini.v1"
 )
 
 // DNSQueryResult DNS 查询结果结构体
@@ -27,8 +26,9 @@ type DNSResult struct {
 
 // ResolveDNS dns查询
 func ResolveDNS(domainName string) DNSQueryResult {
+	cfg := config.Get()
 	c := &dns.Client{
-		Net:     config.GlobalPact,
+		Net:     cfg.Protocol,
 		Timeout: 10 * time.Second,
 	}
 
@@ -90,28 +90,39 @@ func appendResults(results []DNSResult, domainName string, queryType uint16, c *
 				})
 			}
 		}
-
+	case dns.TypeCNAME:
+		for _, ans := range r.Answer {
+			if cname, ok := ans.(*dns.CNAME); ok {
+				results = append(results, DNSResult{
+					IP:      cname.Target,
+					Address: getServer(),
+				})
+			}
+		}
+	case dns.TypeMX:
+		for _, ans := range r.Answer {
+			if mx, ok := ans.(*dns.MX); ok {
+				results = append(results, DNSResult{
+					IP:      mx.Mx,
+					Address: getServer(),
+				})
+			}
+		}
+	case dns.TypeTXT:
+		for _, ans := range r.Answer {
+			if txt, ok := ans.(*dns.TXT); ok {
+				results = append(results, DNSResult{
+					IP:      strings.Join(txt.Txt, "; "),
+					Address: getServer(),
+				})
+			}
+		}
 	}
 	return results
 }
 
 // getServer 从配置文件读取 DNS 服务器地址
 func getServer() string {
-	cfg, err := ini.Load("config/dns_server.ini")
-	if err != nil {
-		log.Error("无法读取配置文件")
-		panic("无法读取配置文件")
-	}
-
-	current := cfg.Section("DNS").Key("server").String()
-	if current == "127.0.0.1" {
-		return current
-	}
-
-	currentNum, err := strconv.Atoi(current)
-	if err != nil {
-		log.Error("配置值不是有效数字")
-		panic("配置值不是有效数字")
-	}
-	return dns_server.GetDNSServer(currentNum)
+	cfg := config.Get()
+	return cfg.CurrentUpstream()
 }

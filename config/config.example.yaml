@@ -1,0 +1,20 @@
+# 基础
+rootDomain: "demo.com"      # 兼容单个根域
+rootDomains: []             # 可选：多个根域名列表，例如 ["demo.com", "example.com"]
+captureAll: false           # 若为 true，则记录所有域名请求（不限制根域）
+dnsListenAddr: ":15353"
+httpListenAddr: ":8080"
+protocol: "udp"           # udp / tcp
+
+# 上游 DNS（按优先级排列）
+upstreamDNS:
+  - "8.8.8.8"
+  - "223.5.5.5"
+
+# MySQL 连接串
+mysqlDSN: "dnslog:dnslog@tcp(localhost:3306)/dnslog?parseTime=true&loc=Local&charset=utf8mb4"
+
+# 分页
+pageSize: 20
+maxPageSize: 100
+

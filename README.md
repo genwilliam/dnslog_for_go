@@ -57,6 +57,25 @@
 ## Requirements
 - Go 1.20+
 - Docker 1.12+
+- MySQL 8.0+ (for DNS log persistence)
+
+### Configuration
+- File: `config/config.yaml` (see `config/config.example.yaml`)
+- Key options:
+  - `rootDomain` / `rootDomains`: one or multiple root domains to capture (e.g. `demo.com`, `["demo.com","example.com"]`)
+  - `captureAll`: set `true` to log all DNS queries, regardless of domain
+  - `dnsListenAddr`: DNS listen address (default `:15353`)
+  - `httpListenAddr`: HTTP listen address (default `:8080`)
+  - `upstreamDNS`: list of upstream DNS (e.g. `["8.8.8.8","223.5.5.5"]`)
+  - `protocol`: `udp` / `tcp` (default `udp`)
+  - `mysqlDSN`: e.g. `user:pass@tcp(localhost:3306)/dnslog?parseTime=true&loc=Local&charset=utf8mb4`
+  - `pageSize`, `maxPageSize`: pagination defaults
+- Env overrides (same keys in upper snake case):
+  - `ROOT_DOMAIN`, `ROOT_DOMAINS`, `CAPTURE_ALL`
+  - `DNS_LISTEN_ADDR`, `HTTP_LISTEN_ADDR`
+  - `UPSTREAM_DNS`, `DNS_PROTOCOL`
+  - `MYSQL_DSN`
+  - `PAGE_SIZE`, `MAX_PAGE_SIZE`
 
 ---
 

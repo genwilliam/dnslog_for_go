@@ -1,13 +1,13 @@
 package domain
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/genwilliam/dnslog_for_go/config"
-	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
 	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"github.com/genwilliam/dnslog_for_go/pkg/response"
 	"github.com/genwilliam/dnslog_for_go/pkg/utils"
-	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -138,16 +138,17 @@ func ChangeServer(c *gin.Context) {
 		return
 	}
 
-	switch dnsRequest.Num {
-	case 0, 1, 2:
-		dns_server.ChangeServer(byte(dnsRequest.Num))
-		server := dns_server.GetDNSServer(dnsRequest.Num)
-		c.JSON(http.StatusOK, gin.H{"message": "DNS 服务器已更改为 " + server})
-		log.Info("DNS 服务器已更改为", zap.String("server", server))
-	default:
+	cfg := config.Get()
+	if dnsRequest.Num < 0 || dnsRequest.Num >= len(cfg.UpstreamDNS) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的选择"})
 		log.Error("无效的选择", zap.Int("num", dnsRequest.Num))
+		return
 	}
+
+	cfg.SetUpstreamIndex(dnsRequest.Num)
+	server := cfg.CurrentUpstream()
+	c.JSON(http.StatusOK, gin.H{"message": "DNS 服务器已更改为 " + server})
+	log.Info("DNS 服务器已更改为", zap.String("server", server))
 }
 
 // ChangePact 修改协议
@@ -159,13 +160,15 @@ func ChangePact(c *gin.Context) {
 		return
 	}
 
+	cfg := config.Get()
+
 	switch pactRequest.Pact {
 	case "udp":
-		config.GlobalPact = "udp"
+		cfg.Protocol = "udp"
 		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 UDP"})
 		log.Info("协议已更改为 UDP")
 	case "tcp":
-		config.GlobalPact = "tcp"
+		cfg.Protocol = "tcp"
 		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 TCP"})
 		log.Info("协议已更改为 TCP")
 	default:

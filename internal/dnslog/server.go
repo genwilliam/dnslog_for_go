@@ -1,27 +1,51 @@
 package dnslog
 
 import (
-	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
-	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"net"
 	"strings"
+
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
 )
 
 var (
-	udpServer  *dns.Server
-	tcpServer  *dns.Server
-	listenAddr = ":15353"
+	udpServer *dns.Server
+	tcpServer *dns.Server
 
-	// TODO: 你可以把它改成从 config 读取
-	rootDomain = "demo.com"
+	listenAddr   = ":15353"
+	rootDomain   = "demo.com"
+	rootDomains  []string
+	captureAll   bool
+	activeConfig *config.Config
 )
 
-// StartDNSServer 启动真正的 DNS 服务器（UDP + TCP）
-func StartDNSServer() {
-	InitStore(1000)
+// StartDNSServer 启动 DNS 服务器（UDP + TCP）
+func StartDNSServer(cfg *config.Config) {
+	activeConfig = cfg
+	listenAddr = cfg.DNSListenAddr
+	rootDomain = strings.ToLower(strings.TrimSuffix(cfg.RootDomain, "."))
+	rootDomains = make([]string, 0, len(cfg.RootDomains))
+	for _, rd := range cfg.RootDomains {
+		rd = strings.ToLower(strings.TrimSuffix(rd, "."))
+		if rd != "" {
+			rootDomains = append(rootDomains, rd)
+		}
+	}
+	captureAll = cfg.CaptureAll
+	if rootDomain == "" && len(rootDomains) > 0 {
+		rootDomain = rootDomains[0]
+	}
+	if rootDomain == "" && !captureAll {
+		rootDomain = "demo.com"
+	}
+
+	if err := InitStore(cfg.MySQLDSN); err != nil {
+		log.Fatal("init store failed", zap.Error(err))
+		return
+	}
 
 	dns.HandleFunc(".", handleDNSQuery)
 
@@ -35,14 +59,14 @@ func StartDNSServer() {
 	}
 
 	go func() {
-		log.Info("DNS UDP server listening", zap.String("addr", listenAddr))
+		log.Info("DNS UDP server listening", zap.String("addr", listenAddr), zap.String("root_domain", rootDomain), zap.String("upstream", cfg.CurrentUpstream()))
 		if err := udpServer.ListenAndServe(); err != nil {
 			log.Error("DNS UDP server failed", zap.Error(err))
 		}
 	}()
 
 	go func() {
-		log.Info("DNS TCP server listening", zap.String("addr", listenAddr))
+		log.Info("DNS TCP server listening", zap.String("addr", listenAddr), zap.String("root_domain", rootDomain), zap.String("upstream", cfg.CurrentUpstream()))
 		if err := tcpServer.ListenAndServe(); err != nil {
 			log.Error("DNS TCP server failed", zap.Error(err))
 		}
@@ -81,27 +105,38 @@ func handleDNSQuery(w dns.ResponseWriter, r *dns.Msg) {
 
 	q := r.Question[0]
 	qName := dns.Fqdn(q.Name)
+	qNameLower := strings.ToLower(qName)
 
 	// 去掉末尾的 "."
 	if strings.HasSuffix(qName, ".") {
 		qName = qName[:len(qName)-1]
 	}
+	if strings.HasSuffix(qNameLower, ".") {
+		qNameLower = qNameLower[:len(qNameLower)-1]
+	}
 
 	qType := dns.TypeToString[q.Qtype]
 
-	// ====== 只记录 rootDomain 下的域名 ======
-	if strings.HasSuffix(qName, rootDomain) {
+	// ====== 是否记录该域名 ======
+	matchedRoot := selectMatchedRoot(qNameLower)
+	if captureAll || matchedRoot != "" {
 
 		// 提取子域，如 abc.demo.com → abc
-		subdomain := strings.TrimSuffix(qName, "."+rootDomain)
+		subdomain := "(none)"
+		if matchedRoot != "" && strings.HasSuffix(qNameLower, matchedRoot) {
+			trimmed := strings.TrimSuffix(qNameLower, "."+matchedRoot)
+			if trimmed != "" && trimmed != qName {
+				subdomain = trimmed
+			}
+		}
 		token := "(none)"
 
-		if subdomain != "" {
+		if subdomain != "" && subdomain != "(none)" {
 			parts := strings.Split(subdomain, ".")
 			token = parts[0]
 		}
 
-		AddRecord(Record{
+		if err := AddRecord(Record{
 			Domain:    qName, // 完整域名
 			ClientIP:  clientIP,
 			Protocol:  proto,
@@ -109,7 +144,9 @@ func handleDNSQuery(w dns.ResponseWriter, r *dns.Msg) {
 			Timestamp: nowMillis(),
 			Server:    listenAddr,
 			Token:     token,
-		})
+		}); err != nil {
+			log.Error("保存 DNS 记录失败", zap.Error(err))
+		}
 
 		log.Info("Captured DNS query",
 			zap.String("domain", qName),
@@ -121,7 +158,7 @@ func handleDNSQuery(w dns.ResponseWriter, r *dns.Msg) {
 	}
 
 	// ====== 保留原来的上游 DNS 转发 ======
-	upstreamHost := dns_server.GetDNSServer(0)
+	upstreamHost := activeConfig.CurrentUpstream()
 	upstreamAddr := net.JoinHostPort(upstreamHost, "53")
 
 	resp, err := dns.Exchange(r, upstreamAddr)
@@ -150,4 +187,21 @@ func parseClientIP(addr net.Addr) string {
 		}
 		return host
 	}
+}
+
+// selectMatchedRoot 返回与 qName 匹配的根域（若 captureAll 则返回 "" 但会被允许记录）
+func selectMatchedRoot(qName string) string {
+	if captureAll {
+		return ""
+	}
+	// 优先单 rootDomain 兼容旧配置
+	if rootDomain != "" && strings.HasSuffix(qName, rootDomain) {
+		return rootDomain
+	}
+	for _, rd := range rootDomains {
+		if strings.HasSuffix(qName, rd) {
+			return rd
+		}
+	}
+	return ""
 }

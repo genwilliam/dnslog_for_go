@@ -61,6 +61,25 @@ dnslog_for_go/
 ## 使用说明
 - Go 1.20+ 环境
 - Docker 1.12+ 环境
+- MySQL 8.0+（日志持久化）
+
+### 配置
+- 配置文件：`config/config.yaml`（示例见 `config/config.example.yaml`）
+- 重要字段：
+  - `rootDomain` / `rootDomains`：单个或多个根域名（例如 `demo.com` 或 `["demo.com","example.com"]`）
+  - `captureAll`：设为 `true` 时记录所有域名请求，不再限制根域
+  - `dnsListenAddr`：DNS 监听地址（默认 `:15353`）
+  - `httpListenAddr`：HTTP 监听地址（默认 `:8080`）
+  - `upstreamDNS`：上游 DNS 列表（例如 `["8.8.8.8","223.5.5.5"]`）
+  - `protocol`：`udp` / `tcp`（默认 `udp`）
+  - `mysqlDSN`：如 `user:pass@tcp(localhost:3306)/dnslog?parseTime=true&loc=Local&charset=utf8mb4`
+  - `pageSize` / `maxPageSize`：分页默认与上限
+- 环境变量可覆盖（同名大写）：
+  - `ROOT_DOMAIN`、`ROOT_DOMAINS`、`CAPTURE_ALL`
+  - `DNS_LISTEN_ADDR`、`HTTP_LISTEN_ADDR`
+  - `UPSTREAM_DNS`、`DNS_PROTOCOL`
+  - `MYSQL_DSN`
+  - `PAGE_SIZE`、`MAX_PAGE_SIZE`
 
 ### 贡献指南
 欢迎大家参与贡献！为了保证项目的质量和协作效率，请遵循以下规范提交 Issue 与 Pull Request。

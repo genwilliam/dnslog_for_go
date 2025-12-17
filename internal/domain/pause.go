@@ -1,8 +1,9 @@
 package domain
 
 import (
-	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"net/http"
+
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

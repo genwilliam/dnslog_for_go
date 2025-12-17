@@ -1,7 +1,8 @@
 <template>
 	<div class="layout-container">
 		<TheHeader />
-		<TheToolbar />
+		<!-- 仅在 DNS 查询页面显示工具栏，日志页不显示查询控件 -->
+		<TheToolbar v-if="showToolbar" />
 		<main class="layout-main">
 			<RouterView />
 		</main>
@@ -9,9 +10,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import TheHeader from './components/TheHeader.vue';
 import TheToolbar from './components/TheToolbar.vue';
 import { RouterView } from 'vue-router';
+
+const route = useRoute();
+const showToolbar = computed(() => route.name === 'dnsquery' || route.path === '/dnsquery');
 </script>
 
 <style scoped>
@@ -28,6 +34,5 @@ import { RouterView } from 'vue-router';
 .layout-main {
 	flex: 1;
 	overflow: auto;
-	padding: 20px;
 }
 </style>

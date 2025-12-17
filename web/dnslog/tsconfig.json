@@ -1,24 +1,27 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    },
-    {
-      "path": "./tsconfig.app.json"
-    }
-  ],
+	"files": [],
+	"references": [
+		{
+			"path": "./tsconfig.node.json"
+		},
+		{
+			"path": "./tsconfig.app.json"
+		}
+	],
 
-  "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "jsx": "preserve",
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler"
-    // "allowImportingTsExtensions": true
-  },
-  "vueCompilerOptions": {
-    "target": 3.3
-  }
+	"compilerOptions": {
+		"allowJs": true,
+		"checkJs": true,
+		"jsx": "preserve",
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		// "allowImportingTsExtensions": true
+		"paths": {
+			"@/*": ["src/*"]
+		}
+	},
+	"vueCompilerOptions": {
+		"target": 3.3
+	}
 }

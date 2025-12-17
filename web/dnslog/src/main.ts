@@ -1,5 +1,5 @@
 import './assets/main.css';
-// import '@/components/dnslog/index.vue';
+
 import router from './router';
 import App from './App.vue';
 import { createApp } from 'vue';

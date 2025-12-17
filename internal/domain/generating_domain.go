@@ -2,39 +2,30 @@ package domain
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 
+	"github.com/genwilliam/dnslog_for_go/config"
 	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
-// GeneratingDomain 基于uuid生成域名
+// GeneratingDomain 基于 uuid 生成子域名，并拼接根域。
 func GeneratingDomain() string {
-	commonTLDs := []string{
-		".com", ".net", ".org", ".cn", ".io", ".edu", ".gov", ".co", ".xyz",
-	}
-	id := uuid.New().String()
+	cfg := config.Get()
 
+	id := uuid.New().String()
 	cleaned := strings.ReplaceAll(id, "-", "")
 
 	if len(cleaned) < 10 {
-		return fmt.Sprintf("UUID 过短，不足10字符: %s", cleaned)
+		return fmt.Sprintf("uuid too short: %s", cleaned)
 	}
-	shortDomain := cleaned[:10]
+	token := cleaned[:10]
 
-	log.Info("生成的短域名为: " + shortDomain)
+	root := strings.TrimSuffix(cfg.RootDomain, ".")
+	domain := fmt.Sprintf("%s.%s", token, root)
 
-	if len(shortDomain) > 10 {
-		return fmt.Sprintf("域名长度超过限制: %s", shortDomain)
-	}
-
-	i := rand.Intn(9)
-
-	tld := commonTLDs[i]
-	domain := fmt.Sprintf("%s%s", shortDomain, tld)
-
-	log.Info("完整的域名为: " + domain)
+	log.Info("生成域名", zap.String("token", token), zap.String("domain", domain))
 	return domain
 }

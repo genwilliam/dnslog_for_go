@@ -23,3 +23,8 @@ logs/*
 # 系统文件
 .DS_Store
 Thumbs.db
+
+config/config.yaml
+cmd/dnslog/dnslog
+
+.air.toml.cache/

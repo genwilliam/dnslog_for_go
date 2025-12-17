@@ -3,22 +3,23 @@ package router
 import (
 	"context"
 	"errors"
-	"github.com/genwilliam/dnslog_for_go/internal/dnslog"
-	"github.com/genwilliam/dnslog_for_go/internal/domain"
-	"github.com/genwilliam/dnslog_for_go/internal/domain/dns_server"
-	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/dnslog"
+	"github.com/genwilliam/dnslog_for_go/internal/domain"
+	"github.com/genwilliam/dnslog_for_go/pkg/log"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 // StartServer 启动 HTTP 服务器 + DNSLog 服务器
-func StartServer() {
+func StartServer(cfg *config.Config) {
 	r := gin.Default()
 
 	// 添加跨域中间件
@@ -42,18 +43,18 @@ func StartServer() {
 	registerRoutes(r)
 
 	// 启动 DNSLog 服务器（监听 :5353，捕获真实 DNS 请求）
-	dnslog.StartDNSServer()
+	dnslog.StartDNSServer(cfg)
 
 	// 创建 HTTP Server
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    cfg.HTTPListenAddr,
 		Handler: r,
 	}
 
 	// 启动 HTTP 服务器
 	go func() {
-		log.Info("Server started on :8080")
-		log.Info("Please visit http://localhost:8080/dnslog to access the DNS log system")
+		log.Info("Server started", zap.String("addr", cfg.HTTPListenAddr))
+		log.Info("Please visit /dnslog to access the DNS log system")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("Server run failed", zap.Error(err))
 		}
@@ -65,9 +66,6 @@ func StartServer() {
 	<-exitChannel
 
 	log.Info("Shutting down server gracefully...")
-
-	// 恢复默认配置
-	dns_server.DefaultConfig()
 
 	// 关闭 DNSLog 服务器
 	dnslog.ShutdownDNSServer()
@@ -93,4 +91,5 @@ func registerRoutes(r *gin.Engine) {
 	r.POST("/start", domain.InitPause)
 
 	r.GET("/records", dnslog.ListRecordsHandler)
+	r.GET("/config", ConfigHandler)
 }

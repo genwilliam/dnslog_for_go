@@ -1,8 +1,13 @@
 {
-  "compilerOptions": {
-    "checkJs": true, // 开启 JS 类型检查
-    "strict": false, // 开启严格模式
-    "target": "es6"
-  },
-  "include": ["./**/*.js", "src/api/generate/index.ts"]
+	"compilerOptions": {
+		"checkJs": true, // 开启 JS 类型检查
+		"strict": false, // 开启严格模式
+		"target": "es6",
+		"ignoreDeprecations": "6.0",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["./**/*.js", "src/api/generate/index.ts"]
 }

@@ -1,18 +1,19 @@
 package dnslog
 
 import (
-	"github.com/genwilliam/dnslog_for_go/pkg/response"
-	"github.com/genwilliam/dnslog_for_go/pkg/utils"
-
 	"strconv"
+
+	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
 // ListRecordsHandler 返回当前捕获到的 DNS 请求记录（支持分页）
 func ListRecordsHandler(c *gin.Context) {
+	cfg := config.Get()
 	pageStr := c.DefaultQuery("page", "1")
-	pageSizeStr := c.DefaultQuery("pageSize", "20")
+	pageSizeStr := c.DefaultQuery("pageSize", strconv.Itoa(cfg.DefaultPageSize))
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -20,15 +21,43 @@ func ListRecordsHandler(c *gin.Context) {
 	}
 	pageSize, err := strconv.Atoi(pageSizeStr)
 	if err != nil || pageSize < 1 {
-		pageSize = 20
+		pageSize = cfg.DefaultPageSize
+	}
+	if pageSize > cfg.MaxPageSize {
+		pageSize = cfg.MaxPageSize
 	}
 
-	records := GetRecords()
-	paged := utils.Paginate(records, page, pageSize)
+	filter := ListFilter{
+		Page:     page,
+		PageSize: pageSize,
+		Domain:   c.Query("domain"),
+		ClientIP: c.Query("client_ip"),
+		Protocol: c.Query("protocol"),
+		QType:    c.Query("qtype"),
+		Token:    c.Query("token"),
+	}
+
+	if start := c.Query("start"); start != "" {
+		if v, err := strconv.ParseInt(start, 10, 64); err == nil {
+			filter.Start = v
+		}
+	}
+	if end := c.Query("end"); end != "" {
+		if v, err := strconv.ParseInt(end, 10, 64); err == nil {
+			filter.End = v
+		}
+	}
+
+	items, total, err := ListRecords(filter)
+	if err != nil {
+		response.Error(c, 500, "failed to list records: "+err.Error())
+		return
+	}
 
 	response.Success(c, gin.H{
-		"items": paged,
-		"total": len(records),
+		"items": items,
+		"total": total,
 		"page":  page,
+		"size":  pageSize,
 	})
 }
