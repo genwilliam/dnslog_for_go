@@ -28,3 +28,4 @@ config/config.yaml
 cmd/dnslog/dnslog
 
 .air.toml.cache/
+.cache/
