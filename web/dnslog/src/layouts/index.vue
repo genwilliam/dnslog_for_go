@@ -1,6 +1,7 @@
 <template>
 	<div class="layout-container">
 		<TheHeader />
+		<ApiKeyBanner />
 		<!-- 仅在 DNS 查询页面显示工具栏，日志页不显示查询控件 -->
 		<TheToolbar v-if="showToolbar" />
 		<main class="layout-main">
@@ -14,6 +15,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import TheHeader from './components/TheHeader.vue';
 import TheToolbar from './components/TheToolbar.vue';
+import ApiKeyBanner from './components/ApiKeyBanner.vue';
 import { RouterView } from 'vue-router';
 
 const route = useRoute();

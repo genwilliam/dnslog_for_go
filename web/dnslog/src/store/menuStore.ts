@@ -5,8 +5,10 @@ import { defineStore } from 'pinia';
 export const useMenuStore = defineStore('menuStore', () => {
 	// 定义新的菜单数据
 	const menuList = [
-		{ title: 'DNS query', path: '/dnsquery' }, // 用于发起新的 DNS 查询的页面
-		{ title: 'DNS log', path: '/dnslog' }, // 用于展示历史/当前查询记录的页面 (您的表格组件)
+		{ title: 'Observe', path: '/observe' }, // 观测/令牌详情
+		{ title: 'DNS log', path: '/dns_log' }, // 历史/当前记录
+		{ title: 'Tokens', path: '/tokens' }, // token 列表
+		{ title: 'Security', path: '/security' }, // API Keys 与黑名单
 	];
 
 	return { menuList };

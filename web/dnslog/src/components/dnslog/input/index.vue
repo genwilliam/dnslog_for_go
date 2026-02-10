@@ -1,17 +1,5 @@
 <template>
-  <n-config-provider>
-    <n-loading-bar-provider>
-      <n-message-provider>
-        <n-notification-provider>
-          <n-modal-provider>
-            <n-dialog-provider>
-              <domainName />
-            </n-dialog-provider>
-          </n-modal-provider>
-        </n-notification-provider>
-      </n-message-provider>
-    </n-loading-bar-provider>
-  </n-config-provider>
+  <domainName />
 </template>
 
 <script setup lang="ts">

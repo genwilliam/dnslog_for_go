@@ -1,4 +1,3 @@
 import http from '@/utils/request';
 
-export const fetchRuntimeConfig = () => http.get('/api/config');
-
+export const fetchRuntimeConfig = () => http.get('/config');

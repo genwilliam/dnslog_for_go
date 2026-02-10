@@ -2,5 +2,5 @@ import http from '@/utils/request';
 
 // 生成随机域名
 export const generateRandomDomain = () => {
-	return http.get('/api/random-domain');
+	return http.get('/random-domain');
 };

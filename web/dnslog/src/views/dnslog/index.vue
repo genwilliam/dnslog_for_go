@@ -1,7 +1,6 @@
 <template>
 	<div class="page-wrapper">
-		<n-config-provider>
-			<n-space vertical size="large">
+		<n-space vertical size="large">
 				<!-- 页面抬头 + 运行配置提示 -->
 				<n-card size="small" class="card">
 					<n-space vertical size="small">
@@ -95,8 +94,7 @@
 						/>
 					</n-space>
 				</n-card>
-			</n-space>
-		</n-config-provider>
+		</n-space>
 	</div>
 </template>
 
@@ -106,6 +104,7 @@ import { NTag } from 'naive-ui';
 import dayjs from 'dayjs';
 import type { DataTableColumns } from 'naive-ui';
 import { fetchRuntimeConfig } from '@/api/config/index.js';
+import { dnsRecords } from '@/api/records/index.js';
 
 // --- 类型定义 (根据后端 JSON) ---
 interface DnsLogItem {
@@ -267,10 +266,7 @@ const fetchLogs = async () => {
 			params.append('end', String(filters.timerange[1]));
 		}
 
-		const response = await fetch(`/api/records?${params.toString()}`);
-		if (!response.ok) throw new Error('网络请求失败');
-
-		const res: ApiResponse = await response.json();
+		const res: ApiResponse = await dnsRecords(Object.fromEntries(params));
 
 		if (res.code === 200) {
 			logs.value = res.data.items;

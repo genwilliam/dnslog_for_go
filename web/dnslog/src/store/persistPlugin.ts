@@ -1,7 +1,10 @@
 const KEY = 'STORE';
-// // 环境变量：若未定义，则默认启用持久化
-// const enablePersistence = import.meta.env.VITE_ENABLE_PERSISTENCE !== 'false';
+
 export default (store) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
   window.addEventListener('beforeunload', () => {
     localStorage.setItem(KEY, JSON.stringify(store.state));
   });
@@ -13,8 +16,20 @@ export default (store) => {
 
   try {
     const originState = JSON.parse(item);
-    store.replaceState(originState);
+    const merged = { ...store.state, ...originState };
+
+    if (originState?.text && typeof originState.text === 'object') {
+      merged.text = { ...store.state.text, ...originState.text };
+    }
+    if (originState?.system && typeof originState.system === 'object') {
+      merged.system = { ...store.state.system, ...originState.system };
+    }
+    if (originState?.runtimeConfig && typeof originState.runtimeConfig === 'object') {
+      merged.runtimeConfig = { ...store.state.runtimeConfig, ...originState.runtimeConfig };
+    }
+
+    store.replaceState(merged);
   } catch (error) {
-    console.log('error');
+    console.log('restore persisted state failed');
   }
 };

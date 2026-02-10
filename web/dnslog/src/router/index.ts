@@ -7,17 +7,27 @@ const router = createRouter({
 		{
 			path: '/',
 			component: Layouts,
-			redirect: '/dnsquery',
+			redirect: '/observe',
 			children: [
 				{
-					path: 'dnsquery',
-					name: 'dnsquery',
+					path: 'observe',
+					name: 'observe',
 					component: () => import('@/views/dns-query/index.vue'),
 				},
 				{
 					path: 'dns_log',
 					name: 'dnslog',
 					component: () => import('@/views/dnslog/index.vue'),
+				},
+				{
+					path: 'tokens',
+					name: 'tokens',
+					component: () => import('@/views/tokens/index.vue'),
+				},
+				{
+					path: 'security',
+					name: 'security',
+					component: () => import('@/views/security/index.vue'),
 				},
 			],
 		},

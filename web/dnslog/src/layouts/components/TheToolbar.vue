@@ -2,10 +2,6 @@
 	<div class="toolbar">
 		<div class="top-row">
 			<Inp class="input" />
-			<queryBtn />
-		</div>
-
-		<div class="bottom-row">
 			<Btn />
 		</div>
 	</div>
@@ -14,7 +10,6 @@
 <script setup lang="ts">
 import Inp from '@/components/dnslog/input/index.vue';
 import Btn from '@/components/dnslog/panel/index.vue';
-import queryBtn from '@/components/dnslog/button/query.vue';
 </script>
 
 <style scoped>
@@ -32,8 +27,7 @@ import queryBtn from '@/components/dnslog/button/query.vue';
 	box-sizing: border-box;
 }
 
-.top-row,
-.bottom-row {
+.top-row {
 	display: flex;
 	align-items: center;
 	width: 100%;
@@ -48,7 +42,4 @@ import queryBtn from '@/components/dnslog/button/query.vue';
 	flex: 1;
 }
 
-.bottom-row {
-	justify-content: flex-start;
-}
 </style>

@@ -27,8 +27,10 @@ const router = useRouter();
 const route = useRoute();
 
 const menus = [
-	{ label: 'DNS query', path: '/dnsquery' },
+	{ label: 'Observe', path: '/observe' },
 	{ label: 'DNS log', path: '/dns_log' },
+	{ label: 'Tokens', path: '/tokens' },
+	{ label: 'Security', path: '/security' },
 ];
 
 const isActive = (item: { path: string }) => {
@@ -43,7 +45,7 @@ const switchTo = (item: { path: string }) => {
 };
 
 const goHome = () => {
-	router.push('/dnsquery');
+	router.push('/observe');
 };
 </script>
 
