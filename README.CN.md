@@ -138,7 +138,7 @@ docker run -d --name dnslog-mysql \
 
 迁移执行方式同上（连接到 127.0.0.1:3306）。
 
-## 4) Redis 启动与说明（非常重要）
+## 4) Redis 启动与说明
 
 Redis 用途：
 
