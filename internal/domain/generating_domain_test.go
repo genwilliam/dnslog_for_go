@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/domain"
 )
 
 // 基于 uuid 生成的域名应落在配置的根域名下。
 func TestGeneratingDomain(t *testing.T) {
 	config.Load()
 
-	domain := GeneratingDomain()
+	domain := domain.GeneratingDomain()
 	if !strings.Contains(domain, ".") {
 		t.Fatalf("生成域名不合法: %s", domain)
 	}

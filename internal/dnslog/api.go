@@ -14,6 +14,8 @@ func ListRecordsHandler(c *gin.Context) {
 	cfg := config.Get()
 	pageStr := c.DefaultQuery("page", "1")
 	pageSizeStr := c.DefaultQuery("pageSize", strconv.Itoa(cfg.DefaultPageSize))
+	order := c.DefaultQuery("order", "desc")
+	cursorStr := c.DefaultQuery("cursor", "")
 
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
@@ -35,6 +37,12 @@ func ListRecordsHandler(c *gin.Context) {
 		Protocol: c.Query("protocol"),
 		QType:    c.Query("qtype"),
 		Token:    c.Query("token"),
+		Order:    order,
+	}
+	if cursorStr != "" {
+		if v, err := strconv.ParseInt(cursorStr, 10, 64); err == nil {
+			filter.Cursor = v
+		}
 	}
 
 	if start := c.Query("start"); start != "" {
@@ -48,9 +56,9 @@ func ListRecordsHandler(c *gin.Context) {
 		}
 	}
 
-	items, total, err := ListRecords(filter)
+	items, total, err := ListRecordsWithContext(c.Request.Context(), filter)
 	if err != nil {
-		response.Error(c, 500, "failed to list records: "+err.Error())
+		response.Error(c, 500, response.CodeInternalError)
 		return
 	}
 

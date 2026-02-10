@@ -2,9 +2,11 @@ package domain
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/dnslog"
 	"github.com/genwilliam/dnslog_for_go/pkg/log"
 	"github.com/genwilliam/dnslog_for_go/pkg/response"
 	"github.com/genwilliam/dnslog_for_go/pkg/utils"
@@ -37,7 +39,10 @@ func ShowForm(c *gin.Context) {
 // SubmitDomain 提交域名并查询
 func SubmitDomain(c *gin.Context) {
 
-	traceID := utils.GenerateTraceID()
+	traceID := response.GetTraceID(c)
+	if traceID == "" {
+		traceID = utils.GenerateTraceID()
+	}
 	clientIP := c.ClientIP()
 
 	if IsPaused() {
@@ -45,7 +50,7 @@ func SubmitDomain(c *gin.Context) {
 			zap.String("trace_id", traceID),
 			zap.String("client_ip", clientIP),
 		)
-		response.ErrorWithTrace(c, 503, "系统已暂停，无法查询域名", traceID)
+		response.ErrorWithTrace(c, 503, response.CodeSystemPaused, traceID)
 		return
 	}
 
@@ -59,57 +64,68 @@ func SubmitDomain(c *gin.Context) {
 			zap.String("client_ip", clientIP),
 			zap.Error(err),
 		)
-		response.ErrorWithTrace(c, 400, "参数格式错误: "+err.Error(), traceID)
+		response.ErrorWithTrace(c, 400, response.CodeBadRequest, traceID)
 		return
 	}
 
 	if req.DomainName == "" {
-		response.ErrorWithTrace(c, 400, "域名不能为空", traceID)
+		response.ErrorWithTrace(c, 400, response.CodeBadRequest, traceID)
 		return
 	}
 
-	if !utils.StandardizeDomain(req.DomainName) {
+	normalizedDomain := normalizeDomain(req.DomainName)
+	if !utils.StandardizeDomain(normalizedDomain) {
 		log.Info("域名格式不合法",
 			zap.String("trace_id", traceID),
 			zap.String("client_ip", clientIP),
-			zap.String("domain", req.DomainName),
+			zap.String("domain", normalizedDomain),
 		)
-		response.ErrorWithTrace(c, 400, "域名不合法，请重新输入", traceID)
+		response.ErrorWithTrace(c, 400, response.CodeBadRequest, traceID)
 		return
 	}
 
-	// 执行 DNS 查询
-	dnsStart := time.Now()
-	dnsResult := utils.ResolveDNS(req.DomainName)
-	dnsCost := time.Since(dnsStart).Milliseconds()
-
-	if len(dnsResult.Results) == 0 {
-		log.Warn("DNS 查询无结果",
+	cfg := config.Get()
+	if !isDomainAllowed(normalizedDomain, cfg) {
+		log.Warn("域名不在允许的根域范围内",
 			zap.String("trace_id", traceID),
 			zap.String("client_ip", clientIP),
-			zap.String("domain", req.DomainName),
+			zap.String("domain", normalizedDomain),
 		)
-		response.ErrorWithTrace(c, 404, "没有找到相关 DNS 记录", traceID)
+		response.ErrorWithTrace(c, 403, response.CodeForbidden, traceID)
 		return
 	}
 
-	// 构造响应
-	resp := gin.H{
-		"domain":     req.DomainName,
-		"results":    dnsResult.Results,
-		"count":      len(dnsResult.Results),
-		"client_ip":  clientIP,
-		"timestamp":  time.Now().UnixMilli(),
-		"trace_id":   traceID,
-		"query_cost": dnsCost,
+	filter := dnslog.ListFilter{
+		Page:     1,
+		PageSize: cfg.MaxPageSize,
+		Domain:   normalizedDomain,
+	}
+	items, total, err := dnslog.ListRecordsWithContext(c.Request.Context(), filter)
+	if err != nil {
+		log.Error("查询 DNS 记录失败",
+			zap.String("trace_id", traceID),
+			zap.String("client_ip", clientIP),
+			zap.String("domain", normalizedDomain),
+			zap.Error(err),
+		)
+		response.ErrorWithTrace(c, 500, response.CodeInternalError, traceID)
+		return
 	}
 
-	log.Info("DNS 查询成功",
+	resp := gin.H{
+		"domain":    normalizedDomain,
+		"items":     items,
+		"total":     total,
+		"pending":   total == 0,
+		"timestamp": time.Now().UnixMilli(),
+		"trace_id":  traceID,
+	}
+
+	log.Info("DNS 记录查询完成",
 		zap.String("trace_id", traceID),
 		zap.String("client_ip", clientIP),
-		zap.String("domain", req.DomainName),
-		zap.Int("result_count", len(dnsResult.Results)),
-		zap.Int64("query_cost_ms", dnsCost),
+		zap.String("domain", normalizedDomain),
+		zap.Int("record_total", total),
 	)
 
 	response.Success(c, resp)
@@ -118,14 +134,20 @@ func SubmitDomain(c *gin.Context) {
 // RandomDomain 随机生成域名
 func RandomDomain(c *gin.Context) {
 	if IsPaused() {
-		response.Error(c, 503, "系统已暂停，无法生成域名")
+		response.Error(c, 503, response.CodeSystemPaused)
 		return
 	}
 
-	domainName := GeneratingDomain()
+	domainName, token, err := GenerateAndInitDomainWithContext(c.Request.Context())
+	if err != nil {
+		log.Error("生成域名失败", zap.Error(err))
+		response.Error(c, 500, response.CodeInternalError)
+		return
+	}
 
 	response.Success(c, gin.H{
 		"domain": domainName,
+		"token":  token,
 	})
 }
 
@@ -133,30 +155,30 @@ func RandomDomain(c *gin.Context) {
 func ChangeServer(c *gin.Context) {
 	var dnsRequest ChangeDNSRequest
 	if err := c.ShouldBindJSON(&dnsRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		log.Error("Failed to bind JSON", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest)
 		return
 	}
 
 	cfg := config.Get()
 	if dnsRequest.Num < 0 || dnsRequest.Num >= len(cfg.UpstreamDNS) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的选择"})
 		log.Error("无效的选择", zap.Int("num", dnsRequest.Num))
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest)
 		return
 	}
 
 	cfg.SetUpstreamIndex(dnsRequest.Num)
 	server := cfg.CurrentUpstream()
-	c.JSON(http.StatusOK, gin.H{"message": "DNS 服务器已更改为 " + server})
 	log.Info("DNS 服务器已更改为", zap.String("server", server))
+	response.Success(c, gin.H{"message": "DNS 服务器已更改为 " + server})
 }
 
 // ChangePact 修改协议
 func ChangePact(c *gin.Context) {
 	var pactRequest ChangePactRequest
 	if err := c.ShouldBindJSON(&pactRequest); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		log.Error("Failed to bind JSON", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest)
 		return
 	}
 
@@ -164,14 +186,45 @@ func ChangePact(c *gin.Context) {
 
 	switch pactRequest.Pact {
 	case "udp":
-		cfg.Protocol = "udp"
-		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 UDP"})
+		cfg.SetProtocol("udp")
 		log.Info("协议已更改为 UDP")
+		response.Success(c, gin.H{"message": "协议已更改为 UDP"})
 	case "tcp":
-		cfg.Protocol = "tcp"
-		c.JSON(http.StatusOK, gin.H{"message": "协议已更改为 TCP"})
+		cfg.SetProtocol("tcp")
 		log.Info("协议已更改为 TCP")
+		response.Success(c, gin.H{"message": "协议已更改为 TCP"})
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的选择"})
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest)
 	}
+}
+
+func normalizeDomain(domain string) string {
+	domain = strings.TrimSpace(strings.ToLower(domain))
+	return strings.TrimSuffix(domain, ".")
+}
+
+func isDomainAllowed(domain string, cfg *config.Config) bool {
+	if cfg.CaptureAll {
+		return true
+	}
+	normalized := normalizeDomain(domain)
+	if normalized == "" {
+		return false
+	}
+	roots := make([]string, 0, 1+len(cfg.RootDomains))
+	if cfg.RootDomain != "" {
+		roots = append(roots, cfg.RootDomain)
+	}
+	roots = append(roots, cfg.RootDomains...)
+
+	for _, root := range roots {
+		r := normalizeDomain(root)
+		if r == "" {
+			continue
+		}
+		if normalized == r || strings.HasSuffix(normalized, "."+r) {
+			return true
+		}
+	}
+	return false
 }

@@ -33,12 +33,21 @@ type ListFilter struct {
 	Protocol string
 	QType    string
 	Token    string
+	Order    string
+	Cursor   int64
 
 	Start int64 // 起始时间戳（毫秒）
 	End   int64 // 结束时间戳（毫秒）
 }
 
 var db *sql.DB
+
+func ensureContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
 
 // InitStore 初始化 MySQL 连接与表结构。
 func InitStore(dsn string) error {
@@ -67,6 +76,24 @@ func InitStore(dsn string) error {
 	if err := createTable(conn); err != nil {
 		return err
 	}
+	if err := createTokensTable(conn); err != nil {
+		return err
+	}
+	if err := createAPIKeysTable(conn); err != nil {
+		return err
+	}
+	if err := createAuditLogsTable(conn); err != nil {
+		return err
+	}
+	if err := createIPBlacklistTable(conn); err != nil {
+		return err
+	}
+	if err := createTokenWebhooksTable(conn); err != nil {
+		return err
+	}
+	if err := createWebhookJobsTable(conn); err != nil {
+		return err
+	}
 
 	db = conn
 	return nil
@@ -86,7 +113,11 @@ CREATE TABLE IF NOT EXISTS dns_records (
     created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_domain (domain),
     INDEX idx_token (token),
-    INDEX idx_ts (timestamp)
+    INDEX idx_ts (timestamp),
+    INDEX idx_token_ts (token, timestamp),
+    INDEX idx_qtype_ts (qtype, timestamp),
+    INDEX idx_client_ts (client_ip, timestamp),
+    INDEX idx_protocol_ts (protocol, timestamp)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 `
 	if _, err := conn.Exec(schema); err != nil {
@@ -95,12 +126,141 @@ CREATE TABLE IF NOT EXISTS dns_records (
 	return nil
 }
 
+func createTokensTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS dns_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token       VARCHAR(128) NOT NULL UNIQUE,
+    domain      VARCHAR(255) NOT NULL,
+    status      ENUM('INIT','HIT','EXPIRED') NOT NULL DEFAULT 'INIT',
+    hit_count   BIGINT NOT NULL DEFAULT 0,
+    first_seen  BIGINT NOT NULL DEFAULT 0,
+    last_seen   BIGINT NOT NULL DEFAULT 0,
+    created_at  BIGINT NOT NULL,
+    updated_at  BIGINT NOT NULL,
+    expires_at  BIGINT NOT NULL,
+    INDEX idx_status (status),
+    INDEX idx_expires (expires_at),
+    INDEX idx_status_created (status, created_at),
+    INDEX idx_status_last (status, last_seen)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table dns_tokens: %w", err)
+	}
+	return nil
+}
+
+func createAPIKeysTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS api_keys (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(64) NOT NULL,
+    api_key VARCHAR(128) NOT NULL UNIQUE,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at BIGINT NOT NULL,
+    last_used_at BIGINT NOT NULL DEFAULT 0,
+    comment VARCHAR(255) DEFAULT '',
+    INDEX idx_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table api_keys: %w", err)
+	}
+	return nil
+}
+
+func createAuditLogsTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    trace_id VARCHAR(64) NOT NULL,
+    api_key_id BIGINT DEFAULT NULL,
+    path VARCHAR(128) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    client_ip VARCHAR(64) NOT NULL,
+    status_code INT NOT NULL,
+    latency_ms INT NOT NULL,
+    token VARCHAR(128) DEFAULT '',
+    created_at BIGINT NOT NULL,
+    INDEX idx_created (created_at),
+    INDEX idx_path (path),
+    INDEX idx_ip (client_ip)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table audit_logs: %w", err)
+	}
+	return nil
+}
+
+func createIPBlacklistTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS ip_blacklist (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ip VARCHAR(64) NOT NULL UNIQUE,
+    reason VARCHAR(255) DEFAULT '',
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at BIGINT NOT NULL,
+    INDEX idx_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table ip_blacklist: %w", err)
+	}
+	return nil
+}
+
+func createTokenWebhooksTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS token_webhooks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token VARCHAR(128) NOT NULL,
+    webhook_url VARCHAR(512) NOT NULL,
+    secret VARCHAR(128) DEFAULT '',
+    mode ENUM('FIRST_HIT','EACH_HIT') NOT NULL DEFAULT 'FIRST_HIT',
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at BIGINT NOT NULL,
+    UNIQUE KEY uk_token (token),
+    INDEX idx_token (token),
+    INDEX idx_enabled (enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table token_webhooks: %w", err)
+	}
+	return nil
+}
+
+func createWebhookJobsTable(conn *sql.DB) error {
+	schema := `
+CREATE TABLE IF NOT EXISTS webhook_jobs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token VARCHAR(128) NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    payload TEXT NOT NULL,
+    secret VARCHAR(128) DEFAULT '',
+    status ENUM('PENDING','SUCCESS','FAILED') NOT NULL DEFAULT 'PENDING',
+    retry_count INT NOT NULL DEFAULT 0,
+    next_retry_at BIGINT NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
+    INDEX idx_status_retry (status, next_retry_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
+	if _, err := conn.Exec(schema); err != nil {
+		return fmt.Errorf("create table webhook_jobs: %w", err)
+	}
+	return nil
+}
+
 // AddRecord 持久化一条记录。
-func AddRecord(rec Record) error {
+func AddRecordWithContext(ctx context.Context, rec Record) error {
 	if db == nil {
 		return errors.New("store not initialized")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx = ensureContext(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
 	_, err := db.ExecContext(ctx, `
@@ -110,17 +270,29 @@ VALUES (?, ?, ?, ?, ?, ?, ?)`,
 	return err
 }
 
+// AddRecord 持久化一条记录。
+func AddRecord(rec Record) error {
+	return AddRecordWithContext(context.Background(), rec)
+}
+
 // ListRecords 根据过滤条件分页查询。
-func ListRecords(filter ListFilter) ([]Record, int, error) {
+func ListRecordsWithContext(ctx context.Context, filter ListFilter) ([]Record, int, error) {
 	if db == nil {
 		return nil, 0, errors.New("store not initialized")
 	}
+	ctx = ensureContext(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	if filter.Page < 1 {
 		filter.Page = 1
 	}
 	if filter.PageSize <= 0 {
 		filter.PageSize = 20
+	}
+	order := "DESC"
+	if strings.ToLower(filter.Order) == "asc" {
+		order = "ASC"
 	}
 
 	where := make([]string, 0)
@@ -154,6 +326,14 @@ func ListRecords(filter ListFilter) ([]Record, int, error) {
 		where = append(where, "timestamp <= ?")
 		args = append(args, filter.End)
 	}
+	if filter.Cursor > 0 {
+		if order == "ASC" {
+			where = append(where, "timestamp > ?")
+		} else {
+			where = append(where, "timestamp < ?")
+		}
+		args = append(args, filter.Cursor)
+	}
 
 	whereSQL := ""
 	if len(where) > 0 {
@@ -161,20 +341,20 @@ func ListRecords(filter ListFilter) ([]Record, int, error) {
 	}
 
 	countSQL := "SELECT COUNT(1) FROM dns_records " + whereSQL
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	var total int
 	if err := db.QueryRowContext(ctx, countSQL, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count records: %w", err)
 	}
 
 	offset := (filter.Page - 1) * filter.PageSize
+	if filter.Cursor > 0 {
+		offset = 0
+	}
 	querySQL := `
 SELECT id, domain, client_ip, protocol, qtype, timestamp, server, token
 FROM dns_records
 ` + whereSQL + `
-ORDER BY timestamp DESC
+ORDER BY timestamp ` + order + `
 LIMIT ? OFFSET ?`
 
 	argsWithPage := append(args, filter.PageSize, offset)
@@ -195,6 +375,11 @@ LIMIT ? OFFSET ?`
 	}
 
 	return items, total, nil
+}
+
+// ListRecords 根据过滤条件分页查询。
+func ListRecords(filter ListFilter) ([]Record, int, error) {
+	return ListRecordsWithContext(context.Background(), filter)
 }
 
 // nowMillis 返回当前时间的毫秒时间戳

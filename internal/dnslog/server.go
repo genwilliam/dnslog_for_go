@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/genwilliam/dnslog_for_go/config"
+	"github.com/genwilliam/dnslog_for_go/internal/metrics"
 	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/miekg/dns"
@@ -46,6 +47,8 @@ func StartDNSServer(cfg *config.Config) {
 		log.Fatal("init store failed", zap.Error(err))
 		return
 	}
+	StartExpireWorker()
+	StartRetentionWorker(cfg)
 
 	dns.HandleFunc(".", handleDNSQuery)
 
@@ -96,12 +99,25 @@ func handleDNSQuery(w dns.ResponseWriter, r *dns.Msg) {
 
 	remoteAddr := w.RemoteAddr()
 	clientIP := parseClientIP(remoteAddr)
+	if blocked, _ := IsIPBlacklisted(clientIP); blocked {
+		m := new(dns.Msg)
+		m.SetRcode(r, dns.RcodeRefused)
+		_ = w.WriteMsg(m)
+		return
+	}
+	if !AllowDNSQuery(clientIP) {
+		m := new(dns.Msg)
+		m.SetRcode(r, dns.RcodeRefused)
+		_ = w.WriteMsg(m)
+		return
+	}
 
 	proto := "udp"
 	switch remoteAddr.(type) {
 	case *net.TCPAddr:
 		proto = "tcp"
 	}
+	metrics.DNSQueriesTotal.WithLabelValues(proto).Inc()
 
 	q := r.Question[0]
 	qName := dns.Fqdn(q.Name)
@@ -146,6 +162,22 @@ func handleDNSQuery(w dns.ResponseWriter, r *dns.Msg) {
 			Token:     token,
 		}); err != nil {
 			log.Error("保存 DNS 记录失败", zap.Error(err))
+		}
+
+		if token != "" && token != "(none)" {
+			ttlMs := int64(activeConfig.TokenTTLSeconds) * 1000
+			if ttlMs <= 0 {
+				ttlMs = int64(3600 * 1000)
+			}
+			isFirst, err := UpsertTokenHit(token, qName, nowMillis(), ttlMs)
+			if err != nil {
+				log.Error("更新 token 状态失败", zap.Error(err))
+			} else {
+				metrics.TokenHitsTotal.Inc()
+				if err := MaybeEnqueueWebhook(token, isFirst, qName); err != nil {
+					log.Error("触发 webhook 失败", zap.Error(err))
+				}
+			}
 		}
 
 		log.Info("Captured DNS query",
