@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	Zap  *zap.Logger
+	Zap  = zap.NewNop()
 	once sync.Once
 )
 

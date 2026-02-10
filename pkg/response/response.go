@@ -22,7 +22,7 @@ func Success(c *gin.Context, data interface{}) {
 
 	c.JSON(http.StatusOK, Response{
 		Code:      200,
-		Message:   "ok",
+		Message:   CodeOK,
 		Data:      data,
 		TraceID:   traceID,
 		Timestamp: time.Now().UnixMilli(),
@@ -31,10 +31,11 @@ func Success(c *gin.Context, data interface{}) {
 
 // Error 返回错误响应（不带 trace）
 func Error(c *gin.Context, httpCode int, msg string) {
+	traceID := GetTraceID(c)
 	c.JSON(httpCode, Response{
 		Code:      httpCode,
 		Message:   msg,
-		TraceID:   "",
+		TraceID:   traceID,
 		Timestamp: time.Now().UnixMilli(),
 	})
 }
