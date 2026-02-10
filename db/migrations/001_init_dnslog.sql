@@ -18,5 +18,9 @@ CREATE TABLE IF NOT EXISTS `dns_records` (
   `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_domain` (`domain`),
   INDEX `idx_token` (`token`),
-  INDEX `idx_ts` (`timestamp`)
+  INDEX `idx_ts` (`timestamp`),
+  INDEX `idx_token_ts` (`token`, `timestamp`),
+  INDEX `idx_qtype_ts` (`qtype`, `timestamp`),
+  INDEX `idx_client_ts` (`client_ip`, `timestamp`),
+  INDEX `idx_protocol_ts` (`protocol`, `timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
