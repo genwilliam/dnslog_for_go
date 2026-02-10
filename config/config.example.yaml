@@ -18,3 +18,33 @@ mysqlDSN: "dnslog:dnslog@tcp(localhost:3306)/dnslog?parseTime=true&loc=Local&cha
 pageSize: 20
 maxPageSize: 100
 
+# Token 过期时间（秒）
+tokenTTLSeconds: 3600
+
+# 安全与限流
+apiKeyRequired: true
+bootstrapEnabled: false
+bootstrapToken: ""
+rateLimitEnabled: true
+rateLimitWindowSeconds: 60
+rateLimitMaxRequests: 60
+dnsRateLimitEnabled: true
+dnsRateLimitWindowSeconds: 60
+dnsRateLimitMaxRequests: 1000
+auditEnabled: true
+publicConfig: false
+webhookEnabled: true
+webhookMaxRetries: 4
+webhookRetryIntervalSeconds: 30
+webhookSecretKey: ""
+metricsEnabled: true
+metricsPublic: false
+retentionEnabled: true
+recordRetentionDays: 30
+retentionIntervalSeconds: 3600
+retentionBatchSize: 1000
+
+# Redis
+redisAddr: "127.0.0.1:6379"
+redisPassword: ""
+redisDB: 0
