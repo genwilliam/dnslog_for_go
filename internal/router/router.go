@@ -12,9 +12,13 @@ import (
 	"github.com/genwilliam/dnslog_for_go/config"
 	"github.com/genwilliam/dnslog_for_go/internal/dnslog"
 	"github.com/genwilliam/dnslog_for_go/internal/domain"
+	"github.com/genwilliam/dnslog_for_go/internal/infra"
+	"github.com/genwilliam/dnslog_for_go/internal/middleware"
+	"github.com/genwilliam/dnslog_for_go/internal/metrics"
 	"github.com/genwilliam/dnslog_for_go/pkg/log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
@@ -26,7 +30,7 @@ func StartServer(cfg *config.Config) {
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-API-Key")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -39,16 +43,36 @@ func StartServer(cfg *config.Config) {
 		c.Next()
 	})
 
+	if cfg.RateLimitEnabled || cfg.DNSRateLimitEnabled || cfg.AuditEnabled || cfg.WebhookEnabled {
+		if _, err := infra.InitRedis(cfg); err != nil {
+			log.Fatal("init redis failed", zap.Error(err))
+			return
+		}
+	}
+	if cfg.MetricsEnabled {
+		metrics.Init()
+	}
+	if cfg.AuditEnabled {
+		dnslog.StartAuditWorker()
+	}
+	if cfg.WebhookEnabled {
+		dnslog.StartWebhookWorkers()
+	}
+
 	// 注册路由
-	registerRoutes(r)
+	registerRoutes(r, cfg)
 
 	// 启动 DNSLog 服务器（监听 :5353，捕获真实 DNS 请求）
 	dnslog.StartDNSServer(cfg)
 
 	// 创建 HTTP Server
 	srv := &http.Server{
-		Addr:    cfg.HTTPListenAddr,
-		Handler: r,
+		Addr:              cfg.HTTPListenAddr,
+		Handler:           r,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	// 启动 HTTP 服务器
@@ -81,15 +105,63 @@ func StartServer(cfg *config.Config) {
 }
 
 // registerRoutes 注册路由
-func registerRoutes(r *gin.Engine) {
+func registerRoutes(r *gin.Engine, cfg *config.Config) {
 	r.GET("/dnslog", domain.ShowForm)
-	r.POST("/submit", domain.SubmitDomain) // HTTP DNS 查询接口
-	r.GET("/random-domain", domain.RandomDomain)
-	r.POST("/change", domain.ChangeServer)
-	r.POST("/change-pact", domain.ChangePact)
-	r.POST("/pause", domain.InitPause)
-	r.POST("/start", domain.InitPause)
+	registerAPIRoutes(r, cfg, "")
+	registerAPIRoutes(r, cfg, "/api")
+}
 
-	r.GET("/records", dnslog.ListRecordsHandler)
-	r.GET("/config", ConfigHandler)
+func registerAPIRoutes(r *gin.Engine, cfg *config.Config, prefix string) {
+	base := r.Group(prefix)
+	secured := base.Group("/")
+	secured.Use(
+		middleware.TraceID(),
+		middleware.Audit(cfg),
+		middleware.IPBlacklist(cfg),
+		middleware.APIKeyAuth(cfg),
+		middleware.RateLimit(cfg),
+		middleware.Metrics(),
+	)
+
+	secured.POST("/submit", domain.SubmitDomain) // legacy: DNSLog 记录查询接口（观测模式）
+	secured.GET("/random-domain", domain.RandomDomain)
+	secured.POST("/tokens", domain.RandomDomain)
+	secured.POST("/change", domain.ChangeServer)
+	secured.POST("/change-pact", domain.ChangePact)
+	secured.POST("/pause", domain.InitPause)
+	secured.POST("/start", domain.InitPause)
+
+	secured.GET("/records", dnslog.ListRecordsHandler)
+	secured.GET("/tokens", dnslog.ListTokensHandler)
+	secured.GET("/tokens/:token", dnslog.GetTokenStatusHandler)
+	secured.GET("/tokens/:token/records", dnslog.GetTokenRecordsHandler)
+	secured.POST("/tokens/:token/webhook", dnslog.SetTokenWebhookHandler)
+	secured.GET("/tokens/:token/webhook", dnslog.GetTokenWebhookHandler)
+	secured.POST("/tokens/:token/webhook/disable", dnslog.DisableTokenWebhookHandler)
+	secured.DELETE("/tokens/:token/webhook", dnslog.DisableTokenWebhookHandler)
+	secured.POST("/keys", dnslog.CreateAPIKeyHandler)
+	if cfg != nil && cfg.BootstrapEnabled {
+		base.POST("/keys/bootstrap", dnslog.CreateAPIKeyWithBootstrapHandler)
+	}
+	secured.GET("/keys", dnslog.ListAPIKeysHandler)
+	secured.POST("/keys/:id/disable", dnslog.DisableAPIKeyHandler)
+	secured.DELETE("/keys/:id", dnslog.DisableAPIKeyHandler)
+	secured.POST("/blacklist", dnslog.AddBlacklistHandler)
+	secured.GET("/blacklist", dnslog.ListBlacklistHandler)
+	secured.POST("/blacklist/:id/disable", dnslog.DisableBlacklistHandler)
+	secured.DELETE("/blacklist/:id", dnslog.DisableBlacklistHandler)
+
+	if cfg.PublicConfig {
+		base.GET("/config", ConfigHandler)
+	} else {
+		secured.GET("/config", ConfigHandler)
+	}
+
+	if cfg.MetricsEnabled {
+		if cfg.MetricsPublic {
+			base.GET("/metrics", gin.WrapH(promhttp.Handler()))
+		} else {
+			secured.GET("/metrics", gin.WrapH(promhttp.Handler()))
+		}
+	}
 }
